@@ -10,7 +10,6 @@ import (
 func main() {
 
 	log.Println("main.go start!")
-	log.Println("this is part1 ")
 
 	bc := blockchain.NewBlockchain()
 
