@@ -7,14 +7,15 @@ import (
 	"time"
 )
 
-type Block struct {
+type Block struct { // block struct
 	Timestamp     int64
 	Data          []byte
 	PrevBlockHash []byte
 	Hash          []byte
+	Nonce         int
 }
 
-func (b *Block) SetHash() {
+func (b *Block) SetHash() { //block data 해시화
 
 	timestamp := []byte(strconv.FormatInt(b.Timestamp, 10))
 	header := bytes.Join([][]byte{b.PrevBlockHash, b.Data, timestamp}, []byte{})
@@ -23,12 +24,16 @@ func (b *Block) SetHash() {
 
 }
 
-func NewBlock(data string, prevBlockHash []byte) *Block {
-	block := &Block{time.Now().Unix(), []byte(data), prevBlockHash, []byte{}}
-	block.SetHash()
+func NewBlock(data string, prevBlockHash []byte) *Block { // data, prevBlockHash를 받아 새로운 블록 생성
+	block := &Block{time.Now().Unix(), []byte(data), prevBlockHash, []byte{}, 0}
+	// block.SetHash()
+	pow := NewProofOfWork(block)
+	nonce, hash := pow.Run()
+	block.Hash = hash
+	block.Nonce = nonce
 	return block
 }
 
-func NewGenesisBlock() *Block {
+func NewGenesisBlock() *Block { // 최초 블록 생성
 	return NewBlock("Genesis Block", []byte{})
 }
