@@ -3,6 +3,7 @@ package blockchain
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/gob"
 	"strconv"
 	"time"
 )
@@ -36,4 +37,24 @@ func NewBlock(data string, prevBlockHash []byte) *Block { // data, prevBlockHash
 
 func NewGenesisBlock() *Block { // 최초 블록 생성
 	return NewBlock("Genesis Block", []byte{})
+}
+
+func (b *Block) Serialize() []byte {
+	var result bytes.Buffer
+
+	encoder := gob.NewEncoder(&result)
+	err := encoder.Encode(b)
+	if err != nil {
+	}
+	return result.Bytes()
+}
+
+func (b *Block) Deserialize(d []byte) *Block {
+	var block Block
+
+	decoder := gob.NewDecoder(bytes.NewReader(d))
+	err := decoder.Decode(&block)
+	if err != nil {
+	}
+	return &block
 }

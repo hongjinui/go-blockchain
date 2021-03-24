@@ -7,7 +7,7 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/hongjinui/go-blockchain/utils"
+	utils "github.com/hongjinui/go-blockchain/utils"
 )
 
 const (
