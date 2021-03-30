@@ -8,8 +8,9 @@ import (
 )
 
 const (
-	blocksBucket = "block"
-	dbFile       = "blockchain.db"
+	blocksBucket    = "block"
+	dbFile          = "blockchain.db"
+	genesisCoinbase = "this is genesis coinbase"
 )
 
 type Blockchain struct { // blockchain struct
@@ -22,7 +23,7 @@ type BlockchainIterator struct {
 	db          *bolt.DB
 }
 
-func (bc *Blockchain) AddBlock(data string) { // 블록체인에 블록 추가
+func (bc *Blockchain) AddBlock(transactions []*Transaction) { // 블록체인에 블록 추가
 	var lastHash []byte
 
 	err := bc.db.View(func(tx *bolt.Tx) error {
@@ -34,7 +35,7 @@ func (bc *Blockchain) AddBlock(data string) { // 블록체인에 블록 추가
 		log.Panic(err)
 	}
 
-	newBlock := NewBlock(data, lastHash)
+	newBlock := NewBlock(transactions, lastHash)
 
 	err = bc.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(blocksBucket))
@@ -54,7 +55,7 @@ func (bc *Blockchain) AddBlock(data string) { // 블록체인에 블록 추가
 	}
 }
 
-func NewBlockchain() *Blockchain { // 새로운 블록체인 생성
+func NewBlockchain(address string) *Blockchain { // 새로운 블록체인 생성
 	var tip []byte
 
 	db, err := bolt.Open(dbFile, 0600, nil)
@@ -65,7 +66,8 @@ func NewBlockchain() *Blockchain { // 새로운 블록체인 생성
 		b := tx.Bucket([]byte(blocksBucket))
 		if b == nil {
 			fmt.Println("No existing blockchain found. Creating a new one...")
-			genesis := NewGenesisBlock()
+			cbtx := NewCoinbaseTX(address, genesisCoinbase)
+			genesis := NewGenesisBlock(cbtx)
 			b, err := tx.CreateBucket([]byte(blocksBucket))
 			if err != nil {
 				log.Panic(err)
@@ -117,4 +119,37 @@ func (i *BlockchainIterator) Next() *Block {
 func (bc *Blockchain) GetDB() *bolt.DB {
 
 	return bc.db
+}
+func (bc *Blockchain) FindUTXOs(address string, amount int) (int, map[string][]int) {
+
+	var spentTXs map[string][]int
+	var unspentTXs map[string][]int
+
+	accumulated := 0
+	bci := bc.Iterator()
+
+	for {
+		block := bci.Next()
+
+	Work:
+		for _, tx := range block.Transactions {
+			txid := string(tx.GetHash())
+
+			for outid, out := range tx.Vout {
+				if spentTXs[txid] != nil {
+					for _, spentOut := range spentTXs[txid] {
+						if spentOut == outid {
+							continue
+						}
+					}
+				}
+				if out.Unlock(address) && accumulated < amount {
+					accumulated += out.Value
+					unspentTXs[txid] = append(unspentTXs[txid], outid)
+				}
+			}
+		}
+
+	}
+
 }

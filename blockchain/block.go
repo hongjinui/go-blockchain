@@ -4,29 +4,32 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/gob"
-	"strconv"
 	"time"
 )
 
 type Block struct { // block struct
 	Timestamp     int64
-	Data          []byte
+	Transactions  []*Transaction
 	PrevBlockHash []byte
 	Hash          []byte
 	Nonce         int
 }
 
-func (b *Block) SetHash() { //block data 해시화
+func (b *Block) HashTransactions() []byte {
 
-	timestamp := []byte(strconv.FormatInt(b.Timestamp, 10))
-	header := bytes.Join([][]byte{b.PrevBlockHash, b.Data, timestamp}, []byte{})
-	hash := sha256.Sum256(header)
-	b.Hash = hash[:]
+	var txHashes [][]byte
+	var txHash [32]byte
 
+	for _, tx := range b.Transactions {
+		txHashes = append(txHashes, tx.GetHash())
+
+	}
+	txHash = sha256.Sum256(bytes.Join(txHashes, []byte{}))
+	return txHash[:]
 }
 
-func NewBlock(data string, prevBlockHash []byte) *Block { // data, prevBlockHash를 받아 새로운 블록 생성
-	block := &Block{time.Now().Unix(), []byte(data), prevBlockHash, []byte{}, 0}
+func NewBlock(transactions []*Transaction, prevBlockHash []byte) *Block { // data, prevBlockHash를 받아 새로운 블록 생성
+	block := &Block{time.Now().Unix(), transactions, prevBlockHash, []byte{}, 0}
 	// block.SetHash()
 	pow := NewProofOfWork(block)
 	nonce, hash := pow.Run()
@@ -35,8 +38,8 @@ func NewBlock(data string, prevBlockHash []byte) *Block { // data, prevBlockHash
 	return block
 }
 
-func NewGenesisBlock() *Block { // 최초 블록 생성
-	return NewBlock("Genesis Block", []byte{})
+func NewGenesisBlock(coinbase *Transaction) *Block { // 최초 블록 생성
+	return NewBlock([]*Transaction{coinbase}, []byte{})
 }
 
 func (b *Block) Serialize() []byte {

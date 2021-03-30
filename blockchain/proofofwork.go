@@ -3,7 +3,9 @@ package blockchain
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/gob"
 	"fmt"
+	"log"
 	"math"
 	"math/big"
 
@@ -36,7 +38,7 @@ func (pow *ProofOfWork) prepareData(nonce int) []byte { // mining 하기 전 데
 
 	data := bytes.Join([][]byte{
 		pow.block.PrevBlockHash,
-		pow.block.Data,
+		pow.block.HashTransactions(),
 		utils.IntToHex(pow.block.Timestamp), // IntToHex: block에 저장되는 데이터를 16진법으로 표현하는 함수
 		utils.IntToHex(int64(targetBits)),
 		utils.IntToHex(int64(nonce)),
@@ -46,14 +48,25 @@ func (pow *ProofOfWork) prepareData(nonce int) []byte { // mining 하기 전 데
 
 	return data
 }
+func (tx Transaction) GetHash() []byte {
+	var encoded bytes.Buffer
+	var hash [32]byte
 
+	enc := gob.NewEncoder(&encoded)
+	err := enc.Encode(tx)
+	if err != nil {
+		log.Panic(err)
+	}
+	hash = sha256.Sum256(encoded.Bytes())
+	return hash[:]
+}
 func (pow *ProofOfWork) Run() (int, []byte) { // mining
 
 	var hashInt big.Int
 	var hash [32]byte
 	nonce := 0
 
-	fmt.Printf("Mining the block containing \"%s\"\n", pow.block.Data) //print formating
+	fmt.Printf("Mining a new block") //print formating
 
 	for nonce < maxNonce {
 		data := pow.prepareData(nonce)

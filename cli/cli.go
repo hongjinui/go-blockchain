@@ -20,8 +20,8 @@ func (cli *CLI) SetBC(bc *b.Blockchain) {
 
 func (cli *CLI) printUsage() {
 	fmt.Println("Usage :")
-	fmt.Println("	addblock -data BLOCK_DATA - add a block to the blockchain")
 	fmt.Println("	printchain - print all the blocks of the blockchain")
+	fmt.Println("	send -from FROM -to TO -amount AMOUNT -send AMOUNT of coins from FROM address to TO")
 }
 
 func (cli *CLI) validateArgs() {
@@ -34,18 +34,21 @@ func (cli *CLI) validateArgs() {
 func (cli *CLI) Run() {
 	cli.validateArgs()
 
-	addBlockCmd := flag.NewFlagSet("addBlock", flag.ExitOnError)
+	sendCmd := flag.NewFlagSet("send", flag.ExitOnError)
 	printChainCmd := flag.NewFlagSet("printchain", flag.ExitOnError)
-	addBlockData := addBlockCmd.String("data", "", "Block data")
+
+	sendFrom := flag.String("from", "", "Source wallat address")
+	sendTo := flag.String("to", "", "Destination wallat address")
+	sendAmount := flag.Int("amount", 0, "Amount to send")
 
 	switch os.Args[1] {
-	case "addBlock":
-		err := addBlockCmd.Parse(os.Args[2:])
+	case "printchain":
+		err := printChainCmd.Parse(os.Args[2:])
 		if err != nil {
 			log.Panic(err)
 		}
-	case "printchain":
-		err := printChainCmd.Parse(os.Args[2:])
+	case "send":
+		err := sendCmd.Parse(os.Args[2:])
 		if err != nil {
 			log.Panic(err)
 		}
@@ -54,30 +57,23 @@ func (cli *CLI) Run() {
 		os.Exit(1)
 	}
 
-	if addBlockCmd.Parsed() {
-		if *addBlockData == "" {
-			addBlockCmd.Usage()
-			os.Exit(1)
-		}
-		cli.addBlock(*addBlockData)
-	}
-
 	if printChainCmd.Parsed() {
 		cli.printChain()
 	}
+	if sendCmd.Parsed() {
+		if *sendFrom == "" || *sendTo == "" || *sendAmount <= 0 {
+			sendCmd.Usage()
+		}
+		cli.send(*sendFrom, *sendTo, *sendAmount)
+	}
 }
 
-func (cli *CLI) addBlock(data string) {
-	cli.bc.AddBlock(data)
-	fmt.Println("Success!")
-}
 func (cli *CLI) printChain() {
 	bci := cli.bc.Iterator()
 
 	for {
 		block := bci.Next()
 		fmt.Printf("Prev. hash : %x\n", block.PrevBlockHash)
-		fmt.Printf("Data : %s\n", block.Data)
 		fmt.Printf("Hash : %x\n", block.Hash)
 
 		pow := b.NewProofOfWork(block)
@@ -88,4 +84,9 @@ func (cli *CLI) printChain() {
 			break
 		}
 	}
+}
+func (cli *CLI) send(from, to string, value int) {
+	tx := b.NewUTOXTransaction(from, to, value)
+	cli.bc.AddBlock([]*b.Transaction{tx})
+	fmt.Println("Success")
 }
