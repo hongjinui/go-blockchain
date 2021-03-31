@@ -21,6 +21,7 @@ func (cli *CLI) SetBC(bc *b.Blockchain) {
 func (cli *CLI) printUsage() {
 	fmt.Println("Usage :")
 	fmt.Println("	getBalance -address ADDRESS -Get balance of ADDRESS")
+	fmt.Println("	createblockchin -address ADDRESS - Create a blockchain and send genesis block reward to ADDRESS")
 	fmt.Println("	printchain - print all the blocks of the blockchain")
 
 	fmt.Println("	send -from FROM -to TO -amount AMOUNT -send AMOUNT of coins from FROM address to TO")
@@ -36,14 +37,28 @@ func (cli *CLI) validateArgs() {
 func (cli *CLI) Run() {
 	cli.validateArgs()
 
+	getBalanceCmd := flag.NewFlagSet("getbalance", flag.ExitOnError)
+	createBlockchintCmd := flag.NewFlagSet("createblockchain", flag.ExitOnError)
 	sendCmd := flag.NewFlagSet("send", flag.ExitOnError)
 	printChainCmd := flag.NewFlagSet("printchain", flag.ExitOnError)
 
+	getBalanceAddress := getBalanceCmd.String("address", "", "The address to get balance for")
+	createBlockchainAddress := createBlockchintCmd.String("address", "", "The address to send genesis block reward to")
 	sendFrom := flag.String("from", "", "Source wallat address")
 	sendTo := flag.String("to", "", "Destination wallat address")
 	sendAmount := flag.Int("amount", 0, "Amount to send")
 
 	switch os.Args[1] {
+	case "getbalance":
+		err := getBalanceCmd.Parse(os.Args[2:])
+		if err != nil {
+			log.Panic(err)
+		}
+	case "createblockchain":
+		err := createBlockchintCmd.Parse(os.Args[2:])
+		if err != nil {
+			log.Panic(err)
+		}
 	case "printchain":
 		err := printChainCmd.Parse(os.Args[2:])
 		if err != nil {
@@ -58,7 +73,20 @@ func (cli *CLI) Run() {
 		cli.printUsage()
 		os.Exit(1)
 	}
-
+	if getBalanceCmd.Parsed() {
+		if *getBalanceAddress == "" {
+			getBalanceCmd.Usage()
+			os.Exit(1)
+		}
+		cli.getBalance(*getBalanceAddress)
+	}
+	if createBlockchintCmd.Parsed() {
+		if *createBlockchainAddress == "" {
+			createBlockchintCmd.Usage()
+			os.Exit(1)
+		}
+		cli.CreateBlockchain(*createBlockchainAddress)
+	}
 	if printChainCmd.Parsed() {
 		cli.printChain()
 	}
@@ -71,7 +99,9 @@ func (cli *CLI) Run() {
 }
 
 func (cli *CLI) printChain() {
-	bci := cli.bc.Iterator()
+	bc := b.NewBlockchain("")
+	defer bc.GetDB().Close()
+	bci := bc.Iterator()
 
 	for {
 		block := bci.Next()
@@ -88,12 +118,19 @@ func (cli *CLI) printChain() {
 	}
 }
 func (cli *CLI) send(from, to string, amount int) {
-	tx := b.NewUTOXTransaction(from, to, bc)
+	bc := b.NewBlockchain(from)
+	defer bc.GetDB().Close()
+
+	tx := b.NewUTOXTransaction(from, to, amount, bc)
 	cli.bc.AddBlock([]*b.Transaction{tx})
+
 	fmt.Println("Success")
 }
 
 func (cli *CLI) getBalance(address string) {
+	bc := b.NewBlockchain(address)
+	defer bc.GetDB().Close()
+
 	balance := 0
 	utxs := cli.bc.FindUnspentTransaction(address)
 
@@ -105,5 +142,11 @@ func (cli *CLI) getBalance(address string) {
 		}
 	}
 	fmt.Printf("Balnce of '%s' : %d\n")
+
+}
+func (cli *CLI) CreateBlockchain(address string) {
+	bc := b.CreateBlockchain(address)
+	bc.GetDB().Close()
+	fmt.Println("DONE!!")
 
 }

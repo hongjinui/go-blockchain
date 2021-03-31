@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"encoding/hex"
 	"fmt"
 	"log"
 	"os"
@@ -109,7 +110,7 @@ func (bc *Blockchain) GetDB() *bolt.DB {
 }
 func (bc *Blockchain) FindUnspentTransaction(address string) []*Transaction {
 
-	var spentTXs map[string][]int
+	spentTXs := make(map[string][]int)
 	var unspentTXs []*Transaction
 
 	bci := bc.Iterator()
@@ -118,13 +119,13 @@ func (bc *Blockchain) FindUnspentTransaction(address string) []*Transaction {
 		block := bci.Next()
 
 		for _, tx := range block.Transactions {
-			txid := string(tx.GetHash())
-
+			txid := hex.EncodeToString(tx.GetHash())
+		Outputs:
 			for outid, out := range tx.Vout {
 				if spentTXs[txid] != nil {
 					for _, spentOut := range spentTXs[txid] {
 						if spentOut == outid {
-							continue
+							continue Outputs
 						}
 					}
 				}
@@ -135,7 +136,8 @@ func (bc *Blockchain) FindUnspentTransaction(address string) []*Transaction {
 			if tx.isCoinbaseTX() == false {
 				for _, in := range tx.Vin {
 					if in.LockedBy(address) {
-						spentTXs[string(in.Txid)] = append(spentTXs[string(in.Txid)], in.Vout)
+						inTxid := hex.EncodeToString(in.Txid)
+						spentTXs[inTxid] = append(spentTXs[inTxid], in.Vout)
 					}
 				}
 			}
@@ -149,7 +151,7 @@ func (bc *Blockchain) FindUnspentTransaction(address string) []*Transaction {
 
 func (bc *Blockchain) FindUTXOs(address string, amount int) (int, map[string][]int) {
 
-	var unspentOutputs map[string][]int
+	unspentOutputs := make(map[string][]int)
 	unspentTXs := bc.FindUnspentTransaction(address)
 	accumulated := 0
 
@@ -159,7 +161,7 @@ func (bc *Blockchain) FindUTXOs(address string, amount int) (int, map[string][]i
 	}
 Work:
 	for _, tx := range unspentTXs {
-		txid := string(tx.GetHash())
+		txid := hex.EncodeToString(tx.GetHash())
 		for outid, out := range tx.Vout {
 			if out.Unlock(address) && accumulated < amount {
 				accumulated += out.Value
@@ -192,4 +194,28 @@ func CreateBlockchain(address string) *Blockchain {
 		log.Panic(err)
 	}
 
+	err = db.Update(func(tx *bolt.Tx) error {
+		cbtx := NewCoinbaseTX(address, genesisCoinbase)
+		genesis := NewGenesisBlock(cbtx)
+
+		b, err := tx.CreateBucket([]byte(blocksBucket))
+		if err != nil {
+			log.Panic(err)
+		}
+		err = b.Put(genesis.Hash, genesis.Serialize())
+		if err != nil {
+			log.Panic(err)
+		}
+		err = b.Put([]byte("I"), genesis.Hash)
+		if err != nil {
+			log.Panic(err)
+		}
+		tip = genesis.Hash
+		return nil
+	})
+	if err != nil {
+		log.Panic(err)
+	}
+	bc := Blockchain{tip, db}
+	return &bc
 }
