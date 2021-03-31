@@ -3,6 +3,7 @@ package blockchain
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/boltdb/bolt"
 )
@@ -56,6 +57,11 @@ func (bc *Blockchain) AddBlock(transactions []*Transaction) { // 블록체인에
 }
 
 func NewBlockchain(address string) *Blockchain { // 새로운 블록체인 생성
+	if dbExists() == false {
+		fmt.Println("No existing blockchain found. Creating one first")
+		os.Exit(1)
+	}
+
 	var tip []byte
 
 	db, err := bolt.Open(dbFile, 0600, nil)
@@ -64,26 +70,7 @@ func NewBlockchain(address string) *Blockchain { // 새로운 블록체인 생�
 	}
 	err = db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(blocksBucket))
-		if b == nil {
-			fmt.Println("No existing blockchain found. Creating a new one...")
-			cbtx := NewCoinbaseTX(address, genesisCoinbase)
-			genesis := NewGenesisBlock(cbtx)
-			b, err := tx.CreateBucket([]byte(blocksBucket))
-			if err != nil {
-				log.Panic(err)
-			}
-			err = b.Put(genesis.Hash, genesis.Serialize())
-			if err != nil {
-				log.Panic(err)
-			}
-			err = b.Put([]byte("I"), genesis.Hash)
-			if err != nil {
-				log.Panic(err)
-			}
-			tip = genesis.Hash
-		} else {
-			tip = b.Get([]byte("I"))
-		}
+		tip = b.Get([]byte("I"))
 		return nil
 	})
 	if err != nil {
@@ -120,18 +107,16 @@ func (bc *Blockchain) GetDB() *bolt.DB {
 
 	return bc.db
 }
-func (bc *Blockchain) FindUTXOs(address string, amount int) (int, map[string][]int) {
+func (bc *Blockchain) FindUnspentTransaction(address string) []*Transaction {
 
 	var spentTXs map[string][]int
-	var unspentTXs map[string][]int
+	var unspentTXs []*Transaction
 
-	accumulated := 0
 	bci := bc.Iterator()
 
 	for {
 		block := bci.Next()
 
-	Work:
 		for _, tx := range block.Transactions {
 			txid := string(tx.GetHash())
 
@@ -143,13 +128,68 @@ func (bc *Blockchain) FindUTXOs(address string, amount int) (int, map[string][]i
 						}
 					}
 				}
-				if out.Unlock(address) && accumulated < amount {
-					accumulated += out.Value
-					unspentTXs[txid] = append(unspentTXs[txid], outid)
+				if out.Unlock(address) {
+					unspentTXs = append(unspentTXs, tx)
+				}
+			}
+			if tx.isCoinbaseTX() == false {
+				for _, in := range tx.Vin {
+					if in.LockedBy(address) {
+						spentTXs[string(in.Txid)] = append(spentTXs[string(in.Txid)], in.Vout)
+					}
 				}
 			}
 		}
+		if len(block.PrevBlockHash) == 0 {
+			break
+		}
+	}
+	return unspentTXs
+}
 
+func (bc *Blockchain) FindUTXOs(address string, amount int) (int, map[string][]int) {
+
+	var unspentOutputs map[string][]int
+	unspentTXs := bc.FindUnspentTransaction(address)
+	accumulated := 0
+
+	if amount == -1 {
+		accumulated = -2
+
+	}
+Work:
+	for _, tx := range unspentTXs {
+		txid := string(tx.GetHash())
+		for outid, out := range tx.Vout {
+			if out.Unlock(address) && accumulated < amount {
+				accumulated += out.Value
+				unspentOutputs[txid] = append(unspentOutputs[txid], outid)
+				if accumulated >= amount {
+					break Work
+				}
+			}
+		}
+	}
+	return accumulated, unspentOutputs
+}
+
+func dbExists() bool {
+	if _, err := os.Stat(dbFile); os.IsNotExist(err) {
+		return false
+	}
+	return true
+}
+
+func CreateBlockchain(address string) *Blockchain {
+	if dbExists() {
+		fmt.Println("Blockchain already exists.")
+		os.Exit(1)
+	}
+
+	var tip []byte
+	db, err := bolt.Open(dbFile, 0600, nil)
+	if err != nil {
+		log.Panic(err)
 	}
 
 }

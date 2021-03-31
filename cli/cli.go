@@ -20,7 +20,9 @@ func (cli *CLI) SetBC(bc *b.Blockchain) {
 
 func (cli *CLI) printUsage() {
 	fmt.Println("Usage :")
+	fmt.Println("	getBalance -address ADDRESS -Get balance of ADDRESS")
 	fmt.Println("	printchain - print all the blocks of the blockchain")
+
 	fmt.Println("	send -from FROM -to TO -amount AMOUNT -send AMOUNT of coins from FROM address to TO")
 }
 
@@ -85,8 +87,23 @@ func (cli *CLI) printChain() {
 		}
 	}
 }
-func (cli *CLI) send(from, to string, value int) {
-	tx := b.NewUTOXTransaction(from, to, value)
+func (cli *CLI) send(from, to string, amount int) {
+	tx := b.NewUTOXTransaction(from, to, bc)
 	cli.bc.AddBlock([]*b.Transaction{tx})
 	fmt.Println("Success")
+}
+
+func (cli *CLI) getBalance(address string) {
+	balance := 0
+	utxs := cli.bc.FindUnspentTransaction(address)
+
+	for _, tx := range utxs {
+		for _, out := range tx.Vout {
+			if out.Unlock(address) {
+				balance += out.Value
+			}
+		}
+	}
+	fmt.Printf("Balnce of '%s' : %d\n")
+
 }

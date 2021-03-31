@@ -1,6 +1,9 @@
 package blockchain
 
-import "log"
+import (
+	"encoding/hex"
+	"log"
+)
 
 const subdity = 10
 
@@ -10,7 +13,7 @@ type Transaction struct {
 }
 
 type TXInput struct {
-	Txid      int
+	Txid      []byte
 	Vout      int
 	ScriptSig string
 }
@@ -20,11 +23,15 @@ type TXOutput struct {
 }
 
 func (tx Transaction) isCoinbaseTX() bool {
-	return len(tx.Vin) == 1 && tx.Vin[0].Txid == -1 && tx.Vin[0].Vout == -1
+	return len(tx.Vin) == 1 && len(tx.Vin[0].Txid) == 0 && tx.Vin[0].Vout == -1
 }
 
 func (out *TXOutput) Unlock(unlockingData string) bool {
 	return out.ScriptPubKey == unlockingData
+}
+func (in *TXInput) LockedBy(address string) bool {
+	return in.ScriptSig == address
+
 }
 
 func NewCoinbaseTX(to, data string) *Transaction {
@@ -32,24 +39,28 @@ func NewCoinbaseTX(to, data string) *Transaction {
 	if data == "" {
 		data = "Coinbase"
 	}
-	txin := TXInput{-1, -1, data}
+	txin := TXInput{[]byte{}, -1, data}
 	txout := TXOutput{subdity, to}
 	tx := Transaction{[]TXInput{txin}, []TXOutput{txout}}
 	return &tx
 }
 
-func NewUTOXTransaction(from, to string, value int) *Transaction {
+func NewUTOXTransaction(from, to string, value int, bc *Blockchain) *Transaction {
 
 	var inputs []TXInput
 	var outputs []TXOutput
 
-	acc, validOutputs := s.findUnspentOutputs(from, value)
+	acc, validOutputs := bc.FindUTXOs(from, value)
 	if acc < value {
 		log.Panic("ERROR : Not enough funds")
 	}
 	for txid, outs := range validOutputs {
 		for _, out := range outs {
-			input := TXInput{txid, out, from}
+			txidbytes, err := hex.DecodeString(txid)
+			if err != nil {
+				log.Panic(err)
+			}
+			input := TXInput{txidbytes, out, from}
 			inputs = append(inputs, input)
 		}
 	}
