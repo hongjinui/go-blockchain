@@ -11,12 +11,17 @@ import (
 )
 
 type CLI struct {
-	bc *b.Blockchain
 }
 
-func (cli *CLI) SetBC(bc *b.Blockchain) {
-	cli.bc = bc
+func (cli *CLI) createBlockchain(address string) {
+	bc := b.CreateBlockchain(address)
+	bc.GetDB().Close()
+	fmt.Println("Done!")
 }
+
+// func (cli *CLI) SetBC(bc *b.Blockchain) {
+// 	cli.bc = bc
+// }
 
 func (cli *CLI) printUsage() {
 	fmt.Println("Usage :")
@@ -122,7 +127,7 @@ func (cli *CLI) send(from, to string, amount int) {
 	defer bc.GetDB().Close()
 
 	tx := b.NewUTOXTransaction(from, to, amount, bc)
-	cli.bc.AddBlock([]*b.Transaction{tx})
+	bc.MindBlock([]*b.Transaction{tx})
 
 	fmt.Println("Success")
 }
@@ -132,7 +137,7 @@ func (cli *CLI) getBalance(address string) {
 	defer bc.GetDB().Close()
 
 	balance := 0
-	utxs := cli.bc.FindUnspentTransaction(address)
+	utxs := bc.FindUnspentTransactions(address)
 
 	for _, tx := range utxs {
 		for _, out := range tx.Vout {
@@ -141,7 +146,7 @@ func (cli *CLI) getBalance(address string) {
 			}
 		}
 	}
-	fmt.Printf("Balnce of '%s' : %d\n")
+	fmt.Printf("Balnce of '%s' : %d\n", address, balance)
 
 }
 func (cli *CLI) CreateBlockchain(address string) {

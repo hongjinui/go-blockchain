@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"encoding/hex"
+	"fmt"
 	"log"
 )
 
@@ -34,10 +35,11 @@ func (in *TXInput) LockedBy(address string) bool {
 
 }
 
+// NewCoinbaseTX creates a new coinbase transaction
 func NewCoinbaseTX(to, data string) *Transaction {
 
 	if data == "" {
-		data = "Coinbase"
+		data = fmt.Sprintf("Reward to '%s'", to)
 	}
 	txin := TXInput{[]byte{}, -1, data}
 	txout := TXOutput{subdity, to}
@@ -45,6 +47,7 @@ func NewCoinbaseTX(to, data string) *Transaction {
 	return &tx
 }
 
+// NewUTOXTransaction creates a new transaction
 func NewUTOXTransaction(from, to string, value int, bc *Blockchain) *Transaction {
 
 	var inputs []TXInput
@@ -54,9 +57,9 @@ func NewUTOXTransaction(from, to string, value int, bc *Blockchain) *Transaction
 	if acc < value {
 		log.Panic("ERROR : Not enough funds")
 	}
-	for txid, outs := range validOutputs {
+	for txID, outs := range validOutputs {
 		for _, out := range outs {
-			txidbytes, err := hex.DecodeString(txid)
+			txidbytes, err := hex.DecodeString(txID)
 			if err != nil {
 				log.Panic(err)
 			}
