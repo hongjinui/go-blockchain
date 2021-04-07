@@ -1,6 +1,9 @@
 package blockchain
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/gob"
 	"encoding/hex"
 	"fmt"
 	"log"
@@ -9,6 +12,7 @@ import (
 const subdity = 10
 
 type Transaction struct {
+	ID   []byte
 	Vin  []TXInput
 	Vout []TXOutput
 }
@@ -23,14 +27,31 @@ type TXOutput struct {
 	ScriptPubKey string
 }
 
+//SetId sets ID of a transaction
+func (tx *Transaction) SetID() {
+	var encoded bytes.Buffer
+	var hash [32]byte
+
+	enc := gob.NewEncoder(&encoded)
+	err := enc.Encode(tx)
+	if err != nil {
+		log.Panic(err)
+	}
+	hash = sha256.Sum256(encoded.Bytes())
+	tx.ID = hash[:]
+}
+
 func (tx Transaction) isCoinbaseTX() bool {
 	return len(tx.Vin) == 1 && len(tx.Vin[0].Txid) == 0 && tx.Vin[0].Vout == -1
 }
 
-func (out *TXOutput) Unlock(unlockingData string) bool {
+//CanBeUnlockedWith checks if the output can be unlocked with the provided data
+func (out *TXOutput) CanBeUnlockedWith(unlockingData string) bool {
 	return out.ScriptPubKey == unlockingData
 }
-func (in *TXInput) LockedBy(address string) bool {
+
+// CanUnlockOutputWith checks whether the address initiated the transaction
+func (in *TXInput) CanBeUnlockOutputWith(address string) bool {
 	return in.ScriptSig == address
 
 }
@@ -43,36 +64,40 @@ func NewCoinbaseTX(to, data string) *Transaction {
 	}
 	txin := TXInput{[]byte{}, -1, data}
 	txout := TXOutput{subdity, to}
-	tx := Transaction{[]TXInput{txin}, []TXOutput{txout}}
+	tx := Transaction{nil, []TXInput{txin}, []TXOutput{txout}}
+	tx.SetID()
 	return &tx
 }
 
 // NewUTOXTransaction creates a new transaction
-func NewUTOXTransaction(from, to string, value int, bc *Blockchain) *Transaction {
+func NewUTOXTransaction(from, to string, amount int, bc *Blockchain) *Transaction {
 
 	var inputs []TXInput
 	var outputs []TXOutput
 
-	acc, validOutputs := bc.FindUTXOs(from, value)
-	if acc < value {
+	acc, validOutputs := bc.FindSpendableOutpus(from, amount)
+	if acc < amount {
 		log.Panic("ERROR : Not enough funds")
 	}
-	for txID, outs := range validOutputs {
+
+	//Build a list of inputs
+	for txid, outs := range validOutputs {
+		txID, err := hex.DecodeString(txid)
+		if err != nil {
+			log.Panic(err)
+		}
 		for _, out := range outs {
-			txidbytes, err := hex.DecodeString(txID)
-			if err != nil {
-				log.Panic(err)
-			}
-			input := TXInput{txidbytes, out, from}
+			input := TXInput{txID, out, from}
 			inputs = append(inputs, input)
 		}
 	}
 
-	outputs = append(outputs, TXOutput{value, to})
-	if acc > value {
-		outputs = append(outputs, TXOutput{acc - value, to})
+	outputs = append(outputs, TXOutput{amount, to})
+	if acc > amount {
+		outputs = append(outputs, TXOutput{acc - amount, to})
 	}
 
-	tx := Transaction{inputs, outputs}
+	tx := Transaction{nil, inputs, outputs}
+	tx.SetID()
 	return &tx
 }

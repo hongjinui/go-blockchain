@@ -3,9 +3,7 @@ package blockchain
 import (
 	"bytes"
 	"crypto/sha256"
-	"encoding/gob"
 	"fmt"
-	"log"
 	"math"
 	"math/big"
 
@@ -13,7 +11,7 @@ import (
 )
 
 const (
-	targetBits = 15
+	targetBits = 24
 	maxNonce   = math.MaxInt64
 )
 
@@ -48,18 +46,7 @@ func (pow *ProofOfWork) prepareData(nonce int) []byte { // mining 하기 전 데
 
 	return data
 }
-func (tx Transaction) GetHash() []byte {
-	var encoded bytes.Buffer
-	var hash [32]byte
 
-	enc := gob.NewEncoder(&encoded)
-	err := enc.Encode(tx)
-	if err != nil {
-		log.Panic(err)
-	}
-	hash = sha256.Sum256(encoded.Bytes())
-	return hash[:]
-}
 func (pow *ProofOfWork) Run() (int, []byte) { // mining
 
 	var hashInt big.Int
