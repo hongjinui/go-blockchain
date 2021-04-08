@@ -75,7 +75,16 @@ func NewUTOXTransaction(from, to string, amount int, bc *Blockchain) *Transactio
 	var inputs []TXInput
 	var outputs []TXOutput
 
-	acc, validOutputs := bc.FindSpendableOutpus(from, amount)
+	acc, validOutputs := bc.FindSpendableOutputs(from, amount)
+
+	fmt.Println("ACC :", acc, "@@@@@@@@@@@@@@@")
+	for _, out := range validOutputs {
+		for _, o := range out {
+
+			fmt.Println("validOutputs :", o)
+		}
+	}
+
 	if acc < amount {
 		log.Panic("ERROR : Not enough funds")
 	}
