@@ -19,10 +19,6 @@ func (cli *CLI) createBlockchain(address string) {
 	fmt.Println("Done!")
 }
 
-// func (cli *CLI) SetBC(bc *b.Blockchain) {
-// 	cli.bc = bc
-// }
-
 func (cli *CLI) printUsage() {
 	fmt.Println("Usage :")
 	fmt.Println("	getBalance -address ADDRESS -Get balance of ADDRESS")
@@ -116,8 +112,9 @@ func (cli *CLI) printChain() {
 
 		pow := b.NewProofOfWork(block)
 		fmt.Printf("PoW : %s\n", strconv.FormatBool(pow.Validation()))
-		fmt.Println("Transactions : [")
-		fmt.Println("]")
+		// fmt.Println("Transactions : [")
+		// fmt.Println("]")
+		fmt.Println("")
 
 		if len(block.PrevBlockHash) == 0 {
 			break
@@ -128,7 +125,7 @@ func (cli *CLI) send(from, to string, amount int) {
 	bc := b.NewBlockchain(from)
 	defer bc.GetDB().Close()
 
-	tx := b.NewUTOXTransaction(from, to, amount, bc)
+	tx := b.NewUTXOTransaction(from, to, amount, bc)
 	bc.MindBlock([]*b.Transaction{tx})
 
 	fmt.Println("Success")

@@ -9,7 +9,7 @@ import (
 	"log"
 )
 
-const subdity = 10
+const subdity = 50
 
 type Transaction struct {
 	ID   []byte
@@ -69,21 +69,13 @@ func NewCoinbaseTX(to, data string) *Transaction {
 	return &tx
 }
 
-// NewUTOXTransaction creates a new transaction
-func NewUTOXTransaction(from, to string, amount int, bc *Blockchain) *Transaction {
+// NewUTXOTransaction creates a new transaction
+func NewUTXOTransaction(from, to string, amount int, bc *Blockchain) *Transaction {
 
 	var inputs []TXInput
 	var outputs []TXOutput
 
 	acc, validOutputs := bc.FindSpendableOutputs(from, amount)
-
-	fmt.Println("ACC :", acc, "@@@@@@@@@@@@@@@")
-	for _, out := range validOutputs {
-		for _, o := range out {
-
-			fmt.Println("validOutputs :", o)
-		}
-	}
 
 	if acc < amount {
 		log.Panic("ERROR : Not enough funds")
@@ -103,7 +95,7 @@ func NewUTOXTransaction(from, to string, amount int, bc *Blockchain) *Transactio
 
 	outputs = append(outputs, TXOutput{amount, to})
 	if acc > amount {
-		outputs = append(outputs, TXOutput{acc - amount, to})
+		outputs = append(outputs, TXOutput{acc - amount, from})
 	}
 
 	tx := Transaction{nil, inputs, outputs}

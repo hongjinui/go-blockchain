@@ -60,7 +60,7 @@ func (bc *Blockchain) MindBlock(transactions []*Transaction) { // 블록체인�
 	}
 }
 
-func NewBlockchain(address string) *Blockchain { // 새로운 블록체인 생성
+func NewBlockchain(address string) *Blockchain {
 	if !dbExists() {
 		fmt.Println("No existing blockchain found. create one first")
 		os.Exit(1)

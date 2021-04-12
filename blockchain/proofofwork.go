@@ -16,8 +16,8 @@ const (
 )
 
 var (
-	nonce int
-	// isValid int
+//nonce int
+// isValid int
 )
 
 type ProofOfWork struct { // prooofwork  struct
