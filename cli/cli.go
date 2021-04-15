@@ -40,6 +40,7 @@ func (cli *CLI) Run() {
 
 	getBalanceCmd := flag.NewFlagSet("getbalance", flag.ExitOnError)
 	createblockchainCmd := flag.NewFlagSet("createblockchain", flag.ExitOnError)
+	createWalletCmd := flag.NewFlagSet("createwallet", flag.ExitOnError)
 	sendCmd := flag.NewFlagSet("send", flag.ExitOnError)
 	printChainCmd := flag.NewFlagSet("printchain", flag.ExitOnError)
 
@@ -55,6 +56,11 @@ func (cli *CLI) Run() {
 		if err != nil {
 			log.Panic(err)
 		}
+	case "createwallet":
+		err := createWalletCmd.Parse(os.Args[2:])
+		if err != nil {
+			log.Panic(err)
+		}
 	case "createblockchain":
 		err := createblockchainCmd.Parse(os.Args[2:])
 		if err != nil {
@@ -66,7 +72,6 @@ func (cli *CLI) Run() {
 			log.Panic(err)
 		}
 	case "send":
-		fmt.Println("@@@@@@@@@@@@@@@@@")
 		err := sendCmd.Parse(os.Args[2:])
 		if err != nil {
 			log.Panic(err)
@@ -82,6 +87,10 @@ func (cli *CLI) Run() {
 		}
 		cli.getBalance(*getBalanceAddress)
 	}
+	if createWalletCmd.Parsed() {
+		cli.createWallet()
+	}
+
 	if createblockchainCmd.Parsed() {
 		if *createblockchainAddress == "" {
 			createblockchainCmd.Usage()
@@ -142,5 +151,11 @@ func (cli *CLI) getBalance(address string) {
 		balance += out.Value
 	}
 	fmt.Printf("Balnce of '%s' : %d\n", address, balance)
+
+}
+
+func (cli *CLI) createWallet() {
+	wallet := b.NewWallet()
+	fmt.Printf("Your address : %s\n", wallet.GetAddress())
 
 }
