@@ -15,4 +15,5 @@
 
 
 *.db
+wallet.dat
 # End of https://www.toptal.com/developers/gitignore/api/executable
