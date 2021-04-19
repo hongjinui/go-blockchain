@@ -81,7 +81,7 @@ func (bc *Blockchain) FindTransaction(ID []byte) (Transaction, error) {
 
 }
 
-// SignTransaction signs a Transaction
+// SignTransaction signs inputs of  a Transaction
 func (bc *Blockchain) SignTransaction(tx *Transaction, privKey ecdsa.PrivateKey) {
 	prevTXs := make(map[string]Transaction)
 	for _, vin := range tx.Vin {
@@ -94,7 +94,7 @@ func (bc *Blockchain) SignTransaction(tx *Transaction, privKey ecdsa.PrivateKey)
 	tx.Sign(privKey, prevTXs)
 }
 
-// VerifyTransaction verifies transaction
+// VerifyTransaction verifies transaction input signatures
 func (bc *Blockchain) VerifyTransaction(tx *Transaction) bool {
 	prevTXs := make(map[string]Transaction)
 	for _, vin := range tx.Vin {
@@ -163,19 +163,19 @@ func (bc *Blockchain) FindUnspentTransactions(pubKeyHash []byte) []Transaction {
 		Outputs:
 			for outIdx, out := range tx.Vout {
 				if spentTXs[txId] != nil {
-					for _, spentOut := range spentTXs[txId] {
-						if spentOut == outIdx {
+					for _, spentOutIdx := range spentTXs[txId] {
+						if spentOutIdx == outIdx {
 							continue Outputs
 						}
 					}
 				}
-				if out.Unlock(pubKeyHash) {
+				if out.IsLockedWithKey(pubKeyHash) {
 					unspentTXs = append(unspentTXs, *tx)
 				}
 			}
 			if !tx.isCoinbaseTX() {
 				for _, in := range tx.Vin {
-					if in.UnlocksOutputWith(pubKeyHash) {
+					if in.UsesKey(pubKeyHash) {
 						inTxID := hex.EncodeToString(in.Txid)
 						spentTXs[inTxID] = append(spentTXs[inTxID], in.Vout)
 					}
@@ -196,7 +196,7 @@ func (bc *Blockchain) FindUTXO(pubKeyHash []byte) []TXOutput {
 
 	for _, tx := range unspentTransactions {
 		for _, out := range tx.Vout {
-			if out.Unlock(pubKeyHash) {
+			if out.IsLockedWithKey(pubKeyHash) {
 				UTXOs = append(UTXOs, out)
 			}
 		}
@@ -210,13 +210,12 @@ func (bc *Blockchain) FindSpendableOutputs(pubKeyHash []byte, amount int) (int, 
 	unspentOutputs := make(map[string][]int)
 	unspentTXs := bc.FindUnspentTransactions(pubKeyHash)
 	accumulated := 0
-
 Work:
 	for _, tx := range unspentTXs {
 		txID := hex.EncodeToString(tx.ID)
 
 		for outIdx, out := range tx.Vout {
-			if out.Unlock(pubKeyHash) && accumulated < amount {
+			if out.IsLockedWithKey(pubKeyHash) && accumulated < amount {
 				accumulated += out.Value
 				unspentOutputs[txID] = append(unspentOutputs[txID], outIdx)
 
@@ -243,14 +242,15 @@ func CreateBlockchain(address string) *Blockchain {
 	}
 
 	var tip []byte
+	cbtx := NewCoinbaseTX(address, genesisCoinbaseData)
+	genesis := NewGenesisBlock(cbtx)
+
 	db, err := bolt.Open(dbFile, 0600, nil)
 	if err != nil {
 		log.Panic(err)
 	}
 
 	err = db.Update(func(tx *bolt.Tx) error {
-		cbtx := NewCoinbaseTX(address, genesisCoinbaseData)
-		genesis := NewGenesisBlock(cbtx)
 
 		b, err := tx.CreateBucket([]byte(blocksBucket))
 		if err != nil {

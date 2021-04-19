@@ -5,29 +5,28 @@ import (
 	"math/big"
 )
 
-var alphabet = []byte("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
+var b58Alphat = []byte("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
 
 // Base58Encode encodes a byte array to Base58
 
 func Base58Encode(input []byte) []byte {
 	var result []byte
 
-	x := big.NewInt(0)
-	x.SetBytes(input)
+	x := big.NewInt(0).SetBytes(input)
 
-	base := big.NewInt(int64(len(alphabet)))
+	base := big.NewInt(int64(len(b58Alphat)))
 	zero := big.NewInt(0)
 	mod := &big.Int{}
 
 	for x.Cmp(zero) != 0 {
 		x.DivMod(x, base, mod)
-		result = append(result, alphabet[mod.Int64()])
+		result = append(result, b58Alphat[mod.Int64()])
 	}
 
 	ReverseBytes(result)
-	for c := range input {
-		if c == 0x00 {
-			result = append([]byte{alphabet[0]}, result...)
+	for b := range input {
+		if b == 0x00 {
+			result = append([]byte{b58Alphat[0]}, result...)
 		} else {
 			break
 		}
@@ -36,23 +35,24 @@ func Base58Encode(input []byte) []byte {
 	return result
 }
 
+// Base58Decode decodes Base58-encoded data
 func Base58Decode(input []byte) []byte {
 	result := big.NewInt(0)
 	zeroBytes := 0
 
-	for c := range input {
-		if c == 0x00 {
+	for b := range input {
+		if b == 0x00 {
 			zeroBytes++
 		}
 	}
 
-	address := input[zeroBytes:]
-	for _, b := range address {
-		charIndex := bytes.IndexByte(alphabet, b)
+	payload := input[zeroBytes:]
+	for _, b := range payload {
+		charIndex := bytes.IndexByte(b58Alphat, b)
 		result.Mul(result, big.NewInt(58))
 		result.Add(result, big.NewInt(int64(charIndex)))
 	}
-	raw := result.Bytes()
-	raw = append(bytes.Repeat([]byte{byte(0x00)}, zeroBytes), raw...)
-	return raw
+	decoded := result.Bytes()
+	decoded = append(bytes.Repeat([]byte{byte(0x00)}, zeroBytes), decoded...)
+	return decoded
 }

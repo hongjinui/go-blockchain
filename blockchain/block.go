@@ -8,7 +8,8 @@ import (
 	"time"
 )
 
-type Block struct { // block struct
+// Block represents a block in the blockchain
+type Block struct {
 	Timestamp     int64
 	Transactions  []*Transaction
 	PrevBlockHash []byte
@@ -16,13 +17,14 @@ type Block struct { // block struct
 	Nonce         int
 }
 
+// HashTransactions returns a hash of the transactions int the block
 func (b *Block) HashTransactions() []byte {
 
 	var txHashes [][]byte
 	var txHash [32]byte
 
 	for _, tx := range b.Transactions {
-		txHashes = append(txHashes, tx.ID)
+		txHashes = append(txHashes, tx.Hash())
 
 	}
 	txHash = sha256.Sum256(bytes.Join(txHashes, []byte{}))
@@ -43,7 +45,8 @@ func NewGenesisBlock(coinbase *Transaction) *Block { // 최초 블록 생성
 	return NewBlock([]*Transaction{coinbase}, []byte{})
 }
 
-func (b *Block) Serialize() []byte {
+// Serialize returns a serialized Transaction
+func (b Block) Serialize() []byte {
 	var result bytes.Buffer
 
 	encoder := gob.NewEncoder(&result)
@@ -54,7 +57,8 @@ func (b *Block) Serialize() []byte {
 	return result.Bytes()
 }
 
-func (b *Block) Deserialize(d []byte) *Block {
+// DeserializeBlock deserializes a block
+func (b *Block) DeserializeBlock(d []byte) *Block {
 	var block Block
 
 	decoder := gob.NewDecoder(bytes.NewReader(d))

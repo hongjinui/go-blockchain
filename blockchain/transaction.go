@@ -206,3 +206,26 @@ func (tx *Transaction) Verify(prevTXs map[string]Transaction) bool {
 	}
 	return true
 }
+
+// Serialize returns a serialized Transaction
+func (tx Transaction) Serialize() []byte {
+	var encoded bytes.Buffer
+
+	encoder := gob.NewEncoder(&encoded)
+	err := encoder.Encode(tx)
+	if err != nil {
+		log.Panic(err)
+	}
+	return encoded.Bytes()
+}
+
+// Hash returns the hash of the Transaction
+func (tx *Transaction) Hash() []byte {
+	var hash [32]byte
+
+	txCopy := *tx
+	txCopy.ID = []byte{}
+
+	hash = sha256.Sum256(txCopy.Serialize())
+	return hash[:]
+}

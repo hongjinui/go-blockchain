@@ -5,19 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
-
-	b "github.com/hongjinui/go-blockchain/blockchain"
-	"github.com/hongjinui/go-blockchain/utils"
 )
 
 type CLI struct {
-}
-
-func (cli *CLI) createBlockchain(address string) {
-	bc := b.CreateBlockchain(address)
-	bc.GetDB().Close()
-	fmt.Println("Done!")
 }
 
 func (cli *CLI) printUsage() {
@@ -117,74 +107,4 @@ func (cli *CLI) Run() {
 		}
 		cli.send(*sendFrom, *sendTo, *sendAmount)
 	}
-}
-
-func (cli *CLI) printChain() {
-	bc := b.NewBlockchain("")
-	defer bc.GetDB().Close()
-	bci := bc.Iterator()
-
-	for {
-		block := bci.Next()
-		fmt.Printf("Prev. hash : %x\n", block.PrevBlockHash)
-		fmt.Printf("Hash : %x\n", block.Hash)
-
-		pow := b.NewProofOfWork(block)
-		fmt.Printf("PoW : %s\n", strconv.FormatBool(pow.Validation()))
-
-		for _, tx := range block.Transactions {
-			fmt.Println(tx)
-		}
-
-		fmt.Println("")
-
-		if len(block.PrevBlockHash) == 0 {
-			break
-		}
-	}
-}
-func (cli *CLI) send(from, to string, amount int) {
-	bc := b.NewBlockchain(from)
-	defer bc.GetDB().Close()
-
-	tx := b.NewUTXOTransaction(from, to, amount, bc)
-	bc.MindBlock([]*b.Transaction{tx})
-
-	fmt.Println("Success")
-}
-
-func (cli *CLI) getBalance(address string) {
-	bc := b.NewBlockchain(address)
-	defer bc.GetDB().Close()
-
-	balance := 0
-	pubKeyHash := utils.Base58Decode([]byte(address))
-	pubKeyHash = pubKeyHash[1 : len(pubKeyHash)-4]
-	UTXOs := bc.FindUTXO(pubKeyHash)
-
-	for _, out := range UTXOs {
-		balance += out.Value
-	}
-	fmt.Printf("Balnce of '%s' : %d\n", address, balance)
-
-}
-
-func (cli *CLI) createWallet() {
-	wallets, _ := b.NewWallets()
-	address := wallets.CreateWallet()
-	wallets.SaveToFile()
-
-	fmt.Printf("Your new address : %s\n", address)
-}
-
-func (cli *CLI) listAddresses() {
-	wallets, err := b.NewWallets()
-	if err != nil {
-		log.Panic(err)
-	}
-	addresses := wallets.GetAddresses()
-	for _, address := range addresses {
-		fmt.Println(address)
-	}
-
 }
