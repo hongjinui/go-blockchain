@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	b "github.com/hongjinui/go-blockchain/blockchain"
+	"github.com/hongjinui/go-blockchain/utils"
 )
 
 type CLI struct {
@@ -130,8 +131,11 @@ func (cli *CLI) printChain() {
 
 		pow := b.NewProofOfWork(block)
 		fmt.Printf("PoW : %s\n", strconv.FormatBool(pow.Validation()))
-		// fmt.Println("Transactions : [")
-		// fmt.Println("]")
+
+		for _, tx := range block.Transactions {
+			fmt.Println(tx)
+		}
+
 		fmt.Println("")
 
 		if len(block.PrevBlockHash) == 0 {
@@ -154,7 +158,9 @@ func (cli *CLI) getBalance(address string) {
 	defer bc.GetDB().Close()
 
 	balance := 0
-	UTXOs := bc.FindUTXO(address)
+	pubKeyHash := utils.Base58Decode([]byte(address))
+	pubKeyHash = pubKeyHash[1 : len(pubKeyHash)-4]
+	UTXOs := bc.FindUTXO(pubKeyHash)
 
 	for _, out := range UTXOs {
 		balance += out.Value
@@ -164,7 +170,7 @@ func (cli *CLI) getBalance(address string) {
 }
 
 func (cli *CLI) createWallet() {
-	wallets := b.NewWallets()
+	wallets, _ := b.NewWallets()
 	address := wallets.CreateWallet()
 	wallets.SaveToFile()
 
@@ -172,9 +178,11 @@ func (cli *CLI) createWallet() {
 }
 
 func (cli *CLI) listAddresses() {
-	wallets := b.NewWallets()
+	wallets, err := b.NewWallets()
+	if err != nil {
+		log.Panic(err)
+	}
 	addresses := wallets.GetAddresses()
-
 	for _, address := range addresses {
 		fmt.Println(address)
 	}

@@ -1,16 +1,11 @@
 package blockchain
 
 import (
-	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/gob"
-	"fmt"
-	"io/ioutil"
 	"log"
-	"os"
 
 	"github.com/hongjinui/go-blockchain/utils"
 	"golang.org/x/crypto/ripemd160"
@@ -24,58 +19,21 @@ const (
 //Wallet
 type Wallet struct {
 	PrivateKey ecdsa.PrivateKey
-	PublicKey  ecdsa.PublicKey
+	PublicKey  []byte
 }
 
-type Wallets struct {
-	Wallets map[string]*Wallet
-}
-
-//GetAddresses returns an array of addresses stored int the wallet file
-func (ws *Wallets) GetAddresses() []string {
-	var addresses []string
-	for address := range ws.Wallets {
-		addresses = append(addresses, address)
-
-	}
-	return addresses
-}
 func (w Wallet) GetAddress() []byte {
-	public := append(w.PublicKey.X.Bytes(), w.PublicKey.Y.Bytes()...)
+	pubKey := append(w.PublicKey)
 
-	publicSHA256 := sha256.Sum256(public)
+	pubKeyHash := HashPubKey(pubKey)
 
-	RIPEMD160Hasher := ripemd160.New()
-	_, err := RIPEMD160Hasher.Write(publicSHA256[:])
-	if err != nil {
-		log.Panic(err)
-	}
+	versionedPayload := append([]byte{version}, pubKeyHash...)
 
-	publicRIPEMD160 := RIPEMD160Hasher.Sum(nil)
-	versionPayload := append([]byte{version}, publicRIPEMD160...)
-
-	checksum := checksum(versionPayload)
-	fullPayload := append(versionPayload, checksum...)
+	checksum := checksum(versionedPayload)
+	fullPayload := append(versionedPayload, checksum...)
 	address := utils.Base58Encode(fullPayload)
 	return address
 
-}
-
-// SaveToFile saves the wallets to a file
-func (ws Wallets) SaveToFile() {
-	var content bytes.Buffer
-
-	gob.Register(elliptic.P256())
-
-	encoder := gob.NewEncoder(&content)
-	err := encoder.Encode(ws)
-	if err != nil {
-		log.Panic(err)
-	}
-	err = ioutil.WriteFile(walletFile, content.Bytes(), 0644)
-	if err != nil {
-		log.Panic(err)
-	}
 }
 
 // NewWallet creates and returns a Wallet
@@ -86,25 +44,18 @@ func NewWallet() *Wallet {
 	return &wallet
 }
 
-func newKeyPair() (ecdsa.PrivateKey, ecdsa.PublicKey) {
+func newKeyPair() (ecdsa.PrivateKey, []byte) {
 	curve := elliptic.P256()
 	private, err := ecdsa.GenerateKey(curve, rand.Reader)
-
 	if err != nil {
 		log.Panic(err)
 	}
-	return *private, private.PublicKey
+	pubKey := append(private.PublicKey.X.Bytes(), private.PublicKey.Y.Bytes()...)
+
+	return *private, pubKey
 }
 
-// CreateWallet adds a Wallet to Wallets
-func (ws *Wallets) CreateWallet() string {
-	wallet := NewWallet()
-	address := fmt.Sprintf("%s", wallet.GetAddress())
-	ws.Wallets[address] = wallet
-
-	return address
-}
-
+// Checksum generates a checksum for a public key
 func checksum(payload []byte) []byte {
 	firstSHA := sha256.Sum256(payload)
 	secondSHA := sha256.Sum256(firstSHA[:])
@@ -113,34 +64,15 @@ func checksum(payload []byte) []byte {
 
 }
 
-// LoadFromFile loads wallets from the file
-func (ws *Wallets) LoadFromFile() error {
-	if _, err := os.Stat(walletFile); os.IsNotExist(err) {
-		return err
-	}
-	fileContent, err := ioutil.ReadFile(walletFile)
+// HashPubKey hashes public key
+func HashPubKey(pubKey []byte) []byte {
+	publicSHA256 := sha256.Sum256(pubKey)
+	RIPEMD160Hasher := ripemd160.New()
+	_, err := RIPEMD160Hasher.Write(publicSHA256[:])
 	if err != nil {
 		log.Panic(err)
 	}
-	var wallets Wallets
-	gob.Register(elliptic.P256())
-	decoder := gob.NewDecoder(bytes.NewReader(fileContent))
-	err = decoder.Decode(&wallets)
-	if err != nil {
-		log.Panic(err)
-	}
-	ws.Wallets = wallets.Wallets
-	return nil
-}
+	publicRIPEMD160 := RIPEMD160Hasher.Sum(nil)
+	return publicRIPEMD160
 
-// NewWallet ...
-func NewWallets() *Wallets {
-
-	wallets := Wallets{}
-	wallets.Wallets = make(map[string]*Wallet)
-	err := wallets.LoadFromFile()
-	if err != nil {
-		fmt.Println("Wallets file doesn't exist")
-	}
-	return &wallets
 }
