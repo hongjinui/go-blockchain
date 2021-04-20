@@ -19,9 +19,6 @@ func NewWallets() (*Wallets, error) {
 	wallets := Wallets{}
 	wallets.Wallets = make(map[string]*Wallet)
 	err := wallets.LoadFromFile()
-	if err != nil {
-		fmt.Println("Wallets file doesn't exist")
-	}
 	return &wallets, err
 }
 

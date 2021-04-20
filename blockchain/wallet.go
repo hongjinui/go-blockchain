@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -12,8 +13,9 @@ import (
 )
 
 const (
-	version    = byte(0x00)
-	walletFile = "wallet.dat"
+	version            = byte(0x00)
+	walletFile         = "wallet.dat"
+	addressChecksumLen = 4
 )
 
 //Wallet
@@ -55,12 +57,24 @@ func newKeyPair() (ecdsa.PrivateKey, []byte) {
 	return *private, pubKey
 }
 
+// ValidateAddress check if address if valid
+func ValidateAddress(address string) bool {
+	pubKeyHash := utils.Base58Decode([]byte(address))
+	actualChecksum := pubKeyHash[len(pubKeyHash)-addressChecksumLen:]
+	version := pubKeyHash[0]
+	pubKeyHash = pubKeyHash[1 : len(pubKeyHash)-addressChecksumLen]
+	targetChecksum := checksum(append([]byte{version}, pubKeyHash...))
+
+	return bytes.Compare(actualChecksum, targetChecksum) == 0 // 왜 자꾸 equal쓰래
+
+}
+
 // Checksum generates a checksum for a public key
 func checksum(payload []byte) []byte {
 	firstSHA := sha256.Sum256(payload)
 	secondSHA := sha256.Sum256(firstSHA[:])
 
-	return secondSHA[:4]
+	return secondSHA[:addressChecksumLen]
 
 }
 

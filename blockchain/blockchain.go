@@ -29,7 +29,7 @@ func (bc *Blockchain) MindBlock(transactions []*Transaction) { // 블록체인�
 	var lastHash []byte
 
 	for _, tx := range transactions {
-		if bc.VerifyTransaction(tx) {
+		if bc.VerifyTransaction(tx) != true {
 			log.Panic("ERROR : Invalid transaction")
 		}
 	}
@@ -104,9 +104,6 @@ func (bc *Blockchain) VerifyTransaction(tx *Transaction) bool {
 		}
 		prevTXs[hex.EncodeToString(prevTX.ID)] = prevTX
 	}
-	for _, tx := range prevTXs {
-		fmt.Println(tx)
-	}
 	return tx.Verify(prevTXs)
 }
 
@@ -150,9 +147,8 @@ func (bc *Blockchain) GetDB() *bolt.DB {
 // FindUnspentTransactions returns a list of transactions containing unspent outpus
 func (bc *Blockchain) FindUnspentTransactions(pubKeyHash []byte) []Transaction {
 
-	spentTXs := make(map[string][]int)
 	var unspentTXs []Transaction
-
+	spentTXOs := make(map[string][]int)
 	bci := bc.Iterator()
 
 	for {
@@ -162,8 +158,8 @@ func (bc *Blockchain) FindUnspentTransactions(pubKeyHash []byte) []Transaction {
 			txId := hex.EncodeToString(tx.ID)
 		Outputs:
 			for outIdx, out := range tx.Vout {
-				if spentTXs[txId] != nil {
-					for _, spentOutIdx := range spentTXs[txId] {
+				if spentTXOs[txId] != nil {
+					for _, spentOutIdx := range spentTXOs[txId] {
 						if spentOutIdx == outIdx {
 							continue Outputs
 						}
@@ -177,7 +173,7 @@ func (bc *Blockchain) FindUnspentTransactions(pubKeyHash []byte) []Transaction {
 				for _, in := range tx.Vin {
 					if in.UsesKey(pubKeyHash) {
 						inTxID := hex.EncodeToString(in.Txid)
-						spentTXs[inTxID] = append(spentTXs[inTxID], in.Vout)
+						spentTXOs[inTxID] = append(spentTXOs[inTxID], in.Vout)
 					}
 				}
 			}
