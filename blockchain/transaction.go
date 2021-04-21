@@ -51,8 +51,6 @@ func NewUTXOTransaction(from, to string, amount int, bc *Blockchain) *Transactio
 	}
 	wallet := wallets.GetWallet(from)
 
-	fmt.Println(wallet.GetAddress(), "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-
 	pubKeyHash := HashPubKey(wallet.PublicKey)
 	acc, validOutputs := bc.FindSpendableOutputs(pubKeyHash, amount)
 
@@ -188,7 +186,6 @@ func (tx *Transaction) Verify(prevTXs map[string]Transaction) bool {
 
 		rawPubKey := ecdsa.PublicKey{curve, &x, &y}
 		if ecdsa.Verify(&rawPubKey, txCopy.ID, &r, &s) == false {
-			fmt.Println("@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 			return false
 		}
 

@@ -13,7 +13,7 @@ func (cli *CLI) getBalance(address string) {
 		log.Panic("ERROR : Address is not valid")
 	}
 
-	bc := b.NewBlockchain(address)
+	bc := b.NewBlockchain()
 	defer bc.GetDB().Close()
 
 	balance := 0
