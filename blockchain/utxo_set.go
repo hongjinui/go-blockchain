@@ -70,8 +70,8 @@ func (u UTXOSet) FindUTXO(pubKeyHash []byte) []TXOutput {
 	return UTXOs
 }
 
-// GetCount returns the number of transactions in the UTXO set
-func (u UTXOSet) GetCount() int {
+// CountTransactions returns the number of transactions in the UTXO set
+func (u UTXOSet) CountTransactions() int {
 	db := u.Blockchain.db
 	counter := 0
 	err := db.View(func(tx *bolt.Tx) error {
@@ -92,18 +92,15 @@ func (u UTXOSet) GetCount() int {
 // Reindex rebuilds the UTXO set
 func (u UTXOSet) Reindex() {
 	db := u.Blockchain.db
-	err := db.Update(func(tx *bolt.Tx) error {
-		buketName := []byte(utxoBucket)
-		b := tx.Bucket(buketName)
+	bucketName := []byte(utxoBucket)
 
-		if b != nil {
-			err := tx.DeleteBucket(buketName)
-			if err != nil {
-				log.Panic(err)
-			}
+	err := db.Update(func(tx *bolt.Tx) error {
+		err := tx.DeleteBucket(bucketName)
+		if err != nil {
+			log.Panic(err)
 		}
 
-		_, err := tx.CreateBucket(buketName)
+		_, err = tx.CreateBucket(bucketName)
 		if err != nil {
 			log.Panic(err)
 		}
@@ -112,7 +109,7 @@ func (u UTXOSet) Reindex() {
 	if err != nil {
 		log.Panic(err)
 	}
-	UTXO := u.Blockchain.FindAllUTXO()
+	UTXO := u.Blockchain.FindUTXO()
 
 	err = db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(utxoBucket))
@@ -144,8 +141,8 @@ func (u UTXOSet) Update(block *Block) {
 		for _, tx := range block.Transactions {
 			for _, vin := range tx.Vin {
 				updatedOuts := TXOutputs{}
-				data := b.Get(vin.Txid)
-				outs := DeserializeOutputs(data)
+				outsBytes := b.Get(vin.Txid)
+				outs := DeserializeOutputs(outsBytes)
 
 				for outIdx, out := range outs.Outputs {
 					if outIdx != vin.Vout {

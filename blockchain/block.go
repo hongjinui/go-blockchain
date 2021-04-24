@@ -2,10 +2,11 @@ package blockchain
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"encoding/gob"
 	"log"
 	"time"
+
+	m "github.com/hongjinui/go-blockchain/merkletree"
 )
 
 // Block represents a block in the blockchain
@@ -19,16 +20,14 @@ type Block struct {
 
 // HashTransactions returns a hash of the transactions int the block
 func (b *Block) HashTransactions() []byte {
-
-	var txHashes [][]byte
-	var txHash [32]byte
+	var transaction [][]byte
 
 	for _, tx := range b.Transactions {
-		txHashes = append(txHashes, tx.Hash())
+		transaction = append(transaction, tx.Serialize())
 
 	}
-	txHash = sha256.Sum256(bytes.Join(txHashes, []byte{}))
-	return txHash[:]
+	mTree := m.NewMerkleTree(transaction)
+	return mTree.RootNode.Data
 }
 
 func NewBlock(transactions []*Transaction, prevBlockHash []byte) *Block { // data, prevBlockHash를 받아 새로운 블록 생성

@@ -13,6 +13,11 @@ func (cli *CLI) createBlockchain(address string) {
 	}
 
 	bc := b.CreateBlockchain(address)
-	bc.GetDB().Close()
+
+	defer bc.GetDB().Close()
+
+	UTXOSet := b.UTXOSet{bc}
+	UTXOSet.Reindex()
+
 	fmt.Println("Done!")
 }

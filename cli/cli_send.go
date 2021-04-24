@@ -23,7 +23,9 @@ func (cli *CLI) send(from, to string, amount int) {
 	tx := b.NewUTXOTransaction(from, to, amount, &UTXOSet)
 	cbTx := b.NewCoinbaseTX(from, "")
 	txs := []*b.Transaction{cbTx, tx}
-	bc.MindBlock(txs)
+
+	newBlock := bc.MindBlock(txs)
+	UTXOSet.Update(newBlock)
 
 	bc.MindBlock([]*b.Transaction{tx})
 

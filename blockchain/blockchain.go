@@ -25,7 +25,7 @@ type Blockchain struct { // blockchain struct
 }
 
 // MineBlock mines a new block with the provided transactions
-func (bc *Blockchain) MindBlock(transactions []*Transaction) { // 블록체인에 블록 추가
+func (bc *Blockchain) MindBlock(transactions []*Transaction) *Block { // 블록체인에 블록 추가
 	var lastHash []byte
 
 	for _, tx := range transactions {
@@ -61,6 +61,7 @@ func (bc *Blockchain) MindBlock(transactions []*Transaction) { // 블록체인�
 	if err != nil {
 		log.Panic(err)
 	}
+	return newBlock
 }
 
 //FindTransaction finds a transaction by its ID
@@ -193,8 +194,8 @@ func CreateBlockchain(address string) *Blockchain {
 	return &bc
 }
 
-// FindAllUTXO finds all unspent transaction outpus and returns transactions with spent outpus removed
-func (bc *Blockchain) FindAllUTXO() map[string]TXOutputs {
+// FindUTXO finds all unspent transaction outpus and returns transactions with spent outpus removed
+func (bc *Blockchain) FindUTXO() map[string]TXOutputs {
 	UTXO := make(map[string]TXOutputs)
 	spentTXOs := make(map[string][]int)
 
