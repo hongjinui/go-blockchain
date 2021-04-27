@@ -14,7 +14,7 @@ import (
 
 const (
 	blocksBucket        = "block"
-	dbFile              = "blockchain.db"
+	dbFile              = "blockchain_%s.db"
 	genesisCoinbaseData = "this is genesis coinbase"
 )
 
@@ -24,9 +24,30 @@ type Blockchain struct { // blockchain struct
 	db  *bolt.DB
 }
 
+// Reset removes all blockchain data
+func (bc *Blockchain) Reset() {}
+
+// GetBlockHashes returns a list of hashes of all the blocks in the chain
+func (bc *Blockchain) GetBlockHashes() [][]byte {
+	var blocks [][]byte
+	bci := bc.Iterator()
+
+	for {
+		block := bci.Next()
+		blocks = append(blocks, block.Hash)
+
+		if len(block.PrevBlockHash) == 0 {
+			break
+		}
+	}
+	return blocks
+
+}
+
 // MineBlock mines a new block with the provided transactions
 func (bc *Blockchain) MindBlock(transactions []*Transaction) *Block { // 블록체인에 블록 추가
 	var lastHash []byte
+	var lastHeight int
 
 	for _, tx := range transactions {
 		if bc.VerifyTransaction(tx) != true {
@@ -37,13 +58,19 @@ func (bc *Blockchain) MindBlock(transactions []*Transaction) *Block { // 블록�
 	err := bc.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(blocksBucket))
 		lastHash = b.Get([]byte("I"))
+
+		blockData := b.Get(lastHash)
+		block := DeserializeBlock(blockData)
+
+		lastHeight = block.Height
+
 		return nil
 	})
 	if err != nil {
 		log.Panic(err)
 	}
 
-	newBlock := NewBlock(transactions, lastHash)
+	newBlock := NewBlock(transactions, lastHash, lastHeight-1)
 
 	err = bc.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(blocksBucket))
@@ -111,8 +138,9 @@ func (bc *Blockchain) VerifyTransaction(tx *Transaction) bool {
 	return tx.Verify(prevTXs)
 }
 
-func NewBlockchain() *Blockchain {
-	if !dbExists() {
+func NewBlockchain(nodeID string) *Blockchain {
+	dbFile := fmt.Sprintf(dbFile, nodeID)
+	if !dbExists(dbFile) {
 		fmt.Println("No existing blockchain found. create one first")
 		os.Exit(1)
 	}
@@ -148,15 +176,35 @@ func (bc *Blockchain) GetDB() *bolt.DB {
 	return bc.db
 }
 
-func dbExists() bool {
+// GetBlock finds a block by its hash and returns it
+func (bc *Blockchain) GetBlock(blockHash []byte) (Block, error) {
+	var block Block
+
+	err := bc.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(blocksBucket))
+		blockData := b.Get(blockHash)
+		if blockData == nil {
+			return errors.New("Block is not found.")
+		}
+		block = *DeserializeBlock(blockData)
+		return nil
+	})
+	if err != nil {
+		log.Panic(err)
+	}
+	return block, nil
+}
+
+func dbExists(dbFile string) bool {
 	if _, err := os.Stat(dbFile); os.IsNotExist(err) {
 		return false
 	}
 	return true
 }
 
-func CreateBlockchain(address string) *Blockchain {
-	if dbExists() {
+func CreateBlockchain(address, nodeID string) *Blockchain {
+	dbFile := fmt.Sprintf(dbFile, nodeID)
+	if dbExists(dbFile) {
 		fmt.Println("Blockchain already exists.")
 		os.Exit(1)
 	}

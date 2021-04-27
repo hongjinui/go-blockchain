@@ -7,8 +7,8 @@ import (
 	b "github.com/hongjinui/go-blockchain/blockchain"
 )
 
-func (cli *CLI) listAddresses() {
-	wallets, err := b.NewWallets()
+func (cli *CLI) listAddresses(nodeID string) {
+	wallets, err := b.NewWallets(nodeID)
 	if err != nil {
 		log.Panic(err)
 	}

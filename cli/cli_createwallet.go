@@ -6,10 +6,10 @@ import (
 	b "github.com/hongjinui/go-blockchain/blockchain"
 )
 
-func (cli *CLI) createWallet() {
-	wallets, _ := b.NewWallets()
+func (cli *CLI) createWallet(nodeID string) {
+	wallets, _ := b.NewWallets(nodeID)
 	address := wallets.CreateWallet()
-	wallets.SaveToFile()
+	wallets.SaveToFile(nodeID)
 
 	fmt.Printf("Your new address : %s\n", address)
 }

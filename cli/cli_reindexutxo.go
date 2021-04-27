@@ -6,8 +6,8 @@ import (
 	b "github.com/hongjinui/go-blockchain/blockchain"
 )
 
-func (cli *CLI) reindexUTXO() {
-	bc := b.NewBlockchain()
+func (cli *CLI) reindexUTXO(nodeID string) {
+	bc := b.NewBlockchain(nodeID)
 	UTXOSet := b.UTXOSet{bc}
 	UTXOSet.Reindex()
 

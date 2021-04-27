@@ -7,14 +7,15 @@ import (
 	b "github.com/hongjinui/go-blockchain/blockchain"
 )
 
-func (cli *CLI) printChain() {
-	bc := b.NewBlockchain()
+func (cli *CLI) printChain(nodeID string) {
+	bc := b.NewBlockchain(nodeID)
 	defer bc.GetDB().Close()
 	bci := bc.Iterator()
 
 	for {
 		block := bci.Next()
 		fmt.Printf("=========== Block %x ===========\n", block.Hash)
+		fmt.Printf("Height: %d\n", block.Height)
 		fmt.Printf("Prev. block : %x\n", block.PrevBlockHash)
 
 		pow := b.NewProofOfWork(block)

@@ -16,6 +16,7 @@ type Block struct {
 	PrevBlockHash []byte
 	Hash          []byte
 	Nonce         int
+	Height        int
 }
 
 // HashTransactions returns a hash of the transactions int the block
@@ -30,8 +31,8 @@ func (b *Block) HashTransactions() []byte {
 	return mTree.RootNode.Data
 }
 
-func NewBlock(transactions []*Transaction, prevBlockHash []byte) *Block { // data, prevBlockHash를 받아 새로운 블록 생성
-	block := &Block{time.Now().Unix(), transactions, prevBlockHash, []byte{}, 0}
+func NewBlock(transactions []*Transaction, prevBlockHash []byte, height int) *Block { // data, prevBlockHash를 받아 새로운 블록 생성
+	block := &Block{time.Now().Unix(), transactions, prevBlockHash, []byte{}, 0, height}
 	// block.SetHash()
 	pow := NewProofOfWork(block)
 	nonce, hash := pow.Run()
@@ -41,7 +42,7 @@ func NewBlock(transactions []*Transaction, prevBlockHash []byte) *Block { // dat
 }
 
 func NewGenesisBlock(coinbase *Transaction) *Block { // 최초 블록 생성
-	return NewBlock([]*Transaction{coinbase}, []byte{})
+	return NewBlock([]*Transaction{coinbase}, []byte{}, 0)
 }
 
 // Serialize returns a serialized Transaction
@@ -57,7 +58,7 @@ func (b Block) Serialize() []byte {
 }
 
 // DeserializeBlock deserializes a block
-func (b *Block) DeserializeBlock(d []byte) *Block {
+func DeserializeBlock(d []byte) *Block {
 	var block Block
 
 	decoder := gob.NewDecoder(bytes.NewReader(d))
