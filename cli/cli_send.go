@@ -5,9 +5,10 @@ import (
 	"log"
 
 	b "github.com/hongjinui/go-blockchain/blockchain"
+	s "github.com/hongjinui/go-blockchain/server"
 )
 
-func (cli *CLI) send(from, to string, amount int, nodeID string) {
+func (cli *CLI) send(from, to string, amount int, nodeID string, mineNow bool) {
 	if !b.ValidateAddress(from) {
 		log.Panic("ERROR : Sender address is not valid")
 	}
@@ -27,12 +28,19 @@ func (cli *CLI) send(from, to string, amount int, nodeID string) {
 	wallet := wallets.GetWallet(from)
 	tx := b.NewUTXOTransaction(&wallet, to, amount, &UTXOSet)
 	cbTx := b.NewCoinbaseTX(from, "")
-	txs := []*b.Transaction{cbTx, tx}
 
-	newBlock := bc.MindBlock(txs)
-	UTXOSet.Update(newBlock)
+	if mineNow {
+		txs := []*b.Transaction{cbTx, tx}
+		newBlock := bc.MindBlock(txs)
+		UTXOSet.Update(newBlock)
+	} else {
+		knownNodes := s.GetKnownNodes()
+		s.SendTx(knownNodes[0], tx)
+		s.SendTx(knownNodes[0], cbTx)
+	}
 
-	bc.MindBlock([]*b.Transaction{tx})
+	// newBlock := bc.MindBlock(txs)
+	// UTXOSet.Update(newBlock)
 
 	fmt.Println("Success")
 }

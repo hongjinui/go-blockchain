@@ -24,8 +24,40 @@ type Blockchain struct { // blockchain struct
 	db  *bolt.DB
 }
 
-// Reset removes all blockchain data
-func (bc *Blockchain) Reset() {}
+// AddBlock saves the block into blockchain
+func (bc *Blockchain) AddBlock(block *Block) {
+	err := bc.db.Update(func(tx *bolt.Tx) error {
+
+		b := tx.Bucket([]byte(blocksBucket))
+		blockInDb := b.Get(block.Hash)
+
+		if blockInDb != nil {
+			return nil
+		}
+		blockData := block.Serialize()
+		err := b.Put(block.Hash, blockData)
+		if err != nil {
+			log.Panic(err)
+		}
+
+		lastHash := b.Get([]byte("l"))
+		lastBlockData := b.Get(lastHash)
+		lastBlock := DeserializeBlock(lastBlockData)
+
+		if block.Height > lastBlock.Height {
+			err = b.Put([]byte("l"), block.Hash)
+			if err != nil {
+				log.Panic(err)
+			}
+			bc.tip = block.Hash
+		}
+
+		return nil
+	})
+	if err != nil {
+		log.Panic(err)
+	}
+}
 
 // GetBlockHashes returns a list of hashes of all the blocks in the chain
 func (bc *Blockchain) GetBlockHashes() [][]byte {
@@ -107,6 +139,26 @@ func (bc *Blockchain) FindTransaction(ID []byte) (Transaction, error) {
 	}
 	return Transaction{}, errors.New("Transaction is not found")
 
+}
+
+// GetBestHeight returns the height of the latest block
+func (bc *Blockchain) GetBestHeight() int {
+	var lastBlock Block
+
+	err := bc.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(blocksBucket))
+		lastHash := b.Get([]byte("l"))
+		blockData := b.Get(lastHash)
+		lastBlock = *DeserializeBlock(blockData)
+
+		return nil
+
+	})
+	if err != nil {
+		log.Panic(err)
+	}
+
+	return lastBlock.Height
 }
 
 // SignTransaction signs inputs of  a Transaction
